@@ -1,2 +1,2 @@
 # ansible
-Repository for lab scripts.
+Repository for homelab scripts.
