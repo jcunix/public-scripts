@@ -9,7 +9,9 @@
 set -e
 
 LOG_FILE="/var/tmp/node_install_log.txt"
-FILENAME="node_exporter-1.8.1.linux-amd64"
+# Architecture Type, valid entries would be after the -, e.g. amd64, arm64, 386
+ARCH="arm64"
+FILENAME="node_exporter-1.8.1.linux-${ARCH}"
 VERSION="v1.8.1"
 DOWNLOAD_URL="https://github.com/prometheus/node_exporter/releases/download/${VERSION}/${FILENAME}.tar.gz"
 
