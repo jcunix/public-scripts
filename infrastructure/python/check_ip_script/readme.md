@@ -6,6 +6,11 @@
 **Python application. The API key is passed to the container via an**
 **environment variable, ensuring it remains secure and configurable.**
 
+### Getting IPQualityScore API Key
+
+Signup for an account at **ipqualityscore.com** (free account gives you 5000 lookups per month currently)
+Then go to: https://www.ipqualityscore.com/user/settings
+**API Key** is located under API Key, directly below Email.
 
 ### Setup instructions:
 
@@ -17,6 +22,7 @@ docker-compose build
 
 **Run the Docker container:**
 docker-compose up
+
 
 
 ### Disclaimer
