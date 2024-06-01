@@ -1,4 +1,6 @@
-This setup uses Docker Compose to build and run the containerized Python application. The API key is passed to the container via an environment variable, ensuring it remains secure and configurable.
+# This setup uses Docker Compose to build and run the containerized 
+# Python application. The API key is passed to the container via an 
+# environment variable, ensuring it remains secure and configurable.
 
 
 Setup instructions:
