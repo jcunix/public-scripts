@@ -31,16 +31,16 @@ def main():
     # Print the reputation status
     if reputation['success']:
         print(f"Reputation Status for IP {current_ip}:")
-        print(f"Fraud Score: {reputation['fraud_score']}")
-        print(f"ISP: {reputation['ISP']}")
-        print(f"Organization: {reputation['organization']}")
-        print(f"Country: {reputation['country_code']}")
-        print(f"Region: {reputation['region']}")
-        print(f"City: {reputation['city']}")
-        print(f"Usage Type: {reputation['usage_type']}")
-        print(f"Risk Status: {'High Risk' if reputation['fraud_score'] > 75 else 'Low Risk'}")
+        print(f"Fraud Score: {reputation.get('fraud_score', 'N/A')}")
+        print(f"ISP: {reputation.get('ISP', 'N/A')}")
+        print(f"Organization: {reputation.get('organization', 'N/A')}")
+        print(f"Country: {reputation.get('country_code', 'N/A')}")
+        print(f"Region: {reputation.get('region', 'N/A')}")
+        print(f"City: {reputation.get('city', 'N/A')}")
+        print(f"Usage Type: {reputation.get('usage_type', 'N/A')}")
+        print(f"Risk Status: {'High Risk' if reputation.get('fraud_score', 0) > 75 else 'Low Risk'}")
     else:
-        print(f"Error checking IP reputation: {reputation['message']}")
+        print(f"Error checking IP reputation: {reputation.get('message', 'Unknown error')}")
 
 if __name__ == "__main__":
     main()
