@@ -1,0 +1,14 @@
+    - IP Reputation:  
+        icon: 'mdi-ip'  
+        href: 'https://ip-or-url'  
+        ping: 'ip'  
+        widget:  
+          type: iframe  
+          name: myIframe  
+          src: https://ip-or-url  
+          classes: size-full h-full max-h-full  
+          referrerPolicy: same-origin # optional, no default  
+          allowPolicy: autoplay; fullscreen; gamepad # optional, no default  
+          allowFullscreen: false # optional, default: true  
+          loadingStrategy: eager # optional, default: eager  
+          allowScrolling: no # optional, default: yes
