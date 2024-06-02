@@ -6,22 +6,66 @@
 **Python application. The API key is passed to the container via an**
 **environment variable, ensuring it remains secure and configurable.**
 
-### Getting IPQualityScore API Key
+### API Keys & Other parameters 
+## Getting IPQualityScore API Key
 
 Signup for an account at **ipqualityscore.com** (free account gives you 5000 lookups per month currently)
 Then go to: https://www.ipqualityscore.com/user/settings
 **API Key** is located under API Key, directly below Email.
 
+## Getting AbuseIPDB API Key
+
+Signup for an account at: **https://www.abuseipdb.com/** (free account gives you 1000 checks per day currently)
+Then go to: https://www.abuseipdb.com/account/api
+Create key and insert into your variable.
+
+## Volume
+Logs volume:  ./logs:/app/logs
+
+
 ### Setup instructions:
 
-**Set the environment variable for your API key:**
-export IPQUALITYSCORE_API_KEY=your_api_key
+## Docker Image
 
-**Build the Docker image:**
-docker-compose build
+Grab the image jcunix/projects:ip_rep_checker
+docker pull jcunix/projects:ip_rep_checker
 
-**Run the Docker container:**
-docker-compose up
+## Docker-Compose.yml
+version: '3.8'
+
+services:
+  ip_reputation_checker:
+    build: .
+    container_name: ip_reputation_checker
+    environment:
+      - IPQUALITYSCORE_API_KEY=${IPQUALITYSCORE_API_KEY}
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY}
+      - PORT=${PORT}
+      - TEXT_COLOR=${TEXT_COLOR}
+      - BACKGROUND_COLOR=${BACKGROUND_COLOR}
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "${PORT}:${PORT}"
+
+# .env file:
+IPQUALITYSCORE_API_KEY=your_ipqualityscore_api_key
+ABUSEIPDB_API_KEY=your_abuseipdb_api_key
+PORT=5000
+TEXT_COLOR=#000000
+BACKGROUND_COLOR=#FFFFFF
+
+# structure
+/project-directory
+├── Dockerfile
+├── docker-compose.yml
+├── .env
+├── check_ip_reputation.py
+└── static
+    └── styles.css
+
+# execute
+docker-compose up --build
 
 
 
