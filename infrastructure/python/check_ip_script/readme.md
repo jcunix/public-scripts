@@ -56,12 +56,12 @@ TEXT_COLOR=#000000
 BACKGROUND_COLOR=#FFFFFF
 
 # structure
-/project-directory
-├── Dockerfile
-├── docker-compose.yml
-├── .env
-├── check_ip_reputation.py
-└── static
+/project-directory __
+├── Dockerfile __
+├── docker-compose.yml __
+├── .env __
+├── check_ip_reputation.py __
+└── static __
     └── styles.css
 
 # execute
