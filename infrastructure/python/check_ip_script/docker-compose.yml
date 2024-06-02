@@ -1,0 +1,7 @@
+version: '3.8'
+
+services:
+  ip_reputation_checker:
+    build: .
+    environment:
+      - IPQUALITYSCORE_API_KEY=${IPQUALITYSCORE_API_KEY}
