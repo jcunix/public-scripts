@@ -2,21 +2,21 @@
 
 ### Welcome
 
-**This setup uses Docker Compose to build and run the containerized**
-**Python application. The API key is passed to the container via an**
+**This setup uses Docker Compose to build and run the containerized**  
+**Python application. The API key is passed to the container via an**  
 **environment variable, ensuring it remains secure and configurable.**
 
 ### API Keys & Other parameters 
 ## Getting IPQualityScore API Key
 
-Signup for an account at **ipqualityscore.com** (free account gives you 5000 lookups per month currently)
-Then go to: https://www.ipqualityscore.com/user/settings
+Signup for an account at **ipqualityscore.com** (free account gives you 5000 lookups per month currently)  
+Then go to: https://www.ipqualityscore.com/user/settings  
 **API Key** is located under API Key, directly below Email.
 
 ## Getting AbuseIPDB API Key
 
-Signup for an account at: **https://www.abuseipdb.com/** (free account gives you 1000 checks per day currently)
-Then go to: https://www.abuseipdb.com/account/api
+Signup for an account at: **https://www.abuseipdb.com/** (free account gives you 1000 checks per day currently)  
+Then go to: https://www.abuseipdb.com/account/api  
 Create key and insert into your variable.
 
 ## Volume
@@ -31,7 +31,7 @@ Grab the image jcunix/projects:ip_rep_checker
 docker pull jcunix/projects:ip_rep_checker
 
 ## Docker-Compose.yml
-version: '3.8'
+<pre>version: '3.8'
 
 services:
   ip_reputation_checker:
@@ -46,23 +46,23 @@ services:
     volumes:
       - ./logs:/app/logs
     ports:
-      - "${PORT}:${PORT}"
+      - "${PORT}:${PORT}" </pre>
 
 # .env file:
-IPQUALITYSCORE_API_KEY=your_ipqualityscore_api_key
-ABUSEIPDB_API_KEY=your_abuseipdb_api_key
-PORT=5000
-TEXT_COLOR=#000000
-BACKGROUND_COLOR=#FFFFFF
+<pre>IPQUALITYSCORE_API_KEY=your_ipqualityscore_api_key  
+ABUSEIPDB_API_KEY=your_abuseipdb_api_key  
+PORT=5000  
+TEXT_COLOR=#000000  
+BACKGROUND_COLOR=#FFFFFF </pre>
 
 # structure
-/project-directory __
-├── Dockerfile __
-├── docker-compose.yml __
-├── .env __
-├── check_ip_reputation.py __
-└── static __
-    └── styles.css
+<pre>/project-directory  
+├── Dockerfile  
+├── docker-compose.yml  
+├── .env  
+├── check_ip_reputation.py  
+└── static  
+   └── styles.css </pre>
 
 # execute
 docker-compose up --build
