@@ -336,8 +336,9 @@ setup_unattended_upgrades() {
     if $ALL_OPTIONS || ask_user "Setting up automatic updates"; then
         case $OS in
             ubuntu|debian)
+                echo "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections
                 apt-get install -y unattended-upgrades | tee -a $LOGFILE
-                dpkg-reconfigure -plow unattended-upgrades | tee -a $LOGFILE
+                dpkg-reconfigure -f noninteractive unattended-upgrades | tee -a $LOGFILE
                 ;;
             rhel|rocky)
                 log "Configuring automatic updates with dnf-automatic..."
