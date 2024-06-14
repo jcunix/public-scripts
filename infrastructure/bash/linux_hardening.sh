@@ -2,6 +2,7 @@
 
 LOGFILE="/var/tmp/harden.txt"
 USERNAME=""
+ALL_OPTIONS=false
 
 # Ensure the script is run as root
 if [ "$(id -u)" -ne 0 ]; then
@@ -34,15 +35,18 @@ fi
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 [-u username]"
+    echo "Usage: $0 [-u username] [-a]"
     exit 1
 }
 
 # Parse command-line arguments
-while getopts ":u:" opt; do
+while getopts ":u:a" opt; do
     case $opt in
         u)
             USERNAME=$OPTARG
+            ;;
+        a)
+            ALL_OPTIONS=true
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
@@ -181,7 +185,7 @@ system_hardening() {
 
 # Function for updating and upgrading system packages
 update_and_upgrade() {
-    if ask_user "Updating and upgrading system packages"; then
+    if $ALL_OPTIONS || ask_user "Updating and upgrading system packages"; then
         case $OS in
             ubuntu|debian)
                 apt-get update && apt-get upgrade -y | tee -a $LOGFILE
@@ -199,7 +203,7 @@ update_and_upgrade() {
 
 # Function to install essential security packages
 install_security_packages() {
-    if ask_user "Installing essential security packages"; then
+    if $ALL_OPTIONS || ask_user "Installing essential security packages"; then
         case $OS in
             ubuntu|debian)
                 apt-get install -y ufw fail2ban auditd | tee -a $LOGFILE
@@ -217,7 +221,7 @@ install_security_packages() {
 
 # Function to configure the firewall
 configure_firewall() {
-    if ask_user "Configuring the firewall"; then
+    if $ALL_OPTIONS || ask_user "Configuring the firewall"; then
         case $OS in
             ubuntu|debian)
                 ufw default deny incoming | tee -a $LOGFILE
@@ -268,7 +272,7 @@ add_user_to_sudo() {
 
 # Function to secure SSH
 secure_ssh() {
-    if ask_user "Disabling root login and securing SSH"; then
+    if $ALL_OPTIONS || ask_user "Disabling root login and securing SSH"; then
         add_user_to_sudo
         sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
         sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
@@ -278,7 +282,7 @@ secure_ssh() {
 
 # Function to disable unnecessary services
 disable_unnecessary_services() {
-    if ask_user "Disabling unnecessary services"; then
+    if $ALL_OPTIONS || ask_user "Disabling unnecessary services"; then
         case $OS in
             ubuntu|debian)
                 systemctl disable avahi-daemon | tee -a $LOGFILE
@@ -300,7 +304,7 @@ disable_unnecessary_services() {
 
 # Function to set up Fail2Ban
 setup_fail2ban() {
-    if ask_user "Setting up fail2ban"; then
+    if $ALL_OPTIONS || ask_user "Setting up fail2ban"; then
         cat <<EOF > /etc/fail2ban/jail.local
 [sshd]
 enabled = true
@@ -316,7 +320,7 @@ EOF
 
 # Function to set up Auditd
 setup_auditd() {
-    if ask_user "Setting up auditd"; then
+    if $ALL_OPTIONS || ask_user "Setting up auditd"; then
         cat <<EOF > /etc/audit/audit.rules
 -w /etc/passwd -p wa -k passwd_changes
 -w /etc/shadow -p wa -k shadow_changes
@@ -329,7 +333,7 @@ EOF
 
 # Function to set up automatic updates
 setup_unattended_upgrades() {
-    if ask_user "Setting up automatic updates"; then
+    if $ALL_OPTIONS || ask_user "Setting up automatic updates"; then
         case $OS in
             ubuntu|debian)
                 apt-get install -y unattended-upgrades | tee -a $LOGFILE
@@ -371,7 +375,7 @@ EOF
 
 # Function to harden kernel parameters
 harden_kernel_parameters() {
-    if ask_user "Hardening kernel parameters"; then
+    if $ALL_OPTIONS || ask_user "Hardening kernel parameters"; then
         cat <<EOF > /etc/sysctl.d/99-sysctl.conf
 # IP Spoofing protection
 net.ipv4.conf.all.rp_filter = 1
@@ -509,7 +513,12 @@ ask_user() {
 log "Starting hardening script..."
 
 # Display the main menu and proceed based on the user's choice
-main_menu
+if $ALL_OPTIONS; then
+    log "All options enabled for system hardening."
+    system_hardening
+else
+    main_menu
+fi
 
 # End the script
 log "Script execution completed. Please check the log file at $LOGFILE for details."
