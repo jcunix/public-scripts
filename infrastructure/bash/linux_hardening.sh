@@ -224,10 +224,10 @@ configure_firewall() {
     if $ALL_OPTIONS || ask_user "Configuring the firewall"; then
         case $OS in
             ubuntu|debian)
-                ufw default deny incoming | tee -a $LOGFILE
-                ufw default allow outgoing | tee -a $LOGFILE
-                ufw allow ssh | tee -a $LOGFILE
-                ufw enable | tee -a $LOGFILE
+                yes | ufw default deny incoming | tee -a $LOGFILE
+                yes | ufw default allow outgoing | tee -a $LOGFILE
+                yes | ufw allow ssh | tee -a $LOGFILE
+                yes | ufw enable | tee -a $LOGFILE
                 ;;
             rhel|rocky)
                 systemctl start firewalld | tee -a $LOGFILE
