@@ -1,11 +1,7 @@
 #!/bin/bash
 
-
-# Linux Hardening Script - I take no responsibility for your use of this script
-# Jonathan Wilson - 06/09/2024
-# 
-
 LOGFILE="/var/tmp/harden.txt"
+USERNAME=""
 
 # Ensure the script is run as root
 if [ "$(id -u)" -ne 0 ]; then
@@ -29,12 +25,44 @@ else
     exit 1
 fi
 
+# Determine the correct SSH service name
+if systemctl list-units --full -all | grep -Fq 'ssh.service'; then
+    SSH_SERVICE="ssh"
+else
+    SSH_SERVICE="sshd"
+fi
+
+# Function to display usage information
+usage() {
+    echo "Usage: $0 [-u username]"
+    exit 1
+}
+
+# Parse command-line arguments
+while getopts ":u:" opt; do
+    case $opt in
+        u)
+            USERNAME=$OPTARG
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            usage
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            usage
+            ;;
+    esac
+done
+
 # Function to display the main menu and get the user's choice
 main_menu() {
     echo "Please choose an option:"
     echo "1. System Hardening"
     echo "2. Apache Hardening"
-    read -p "Enter your choice (1 or 2): " main_choice
+    echo "3. Choose Specific Section"
+    echo "4. Exit"
+    read -p "Enter your choice (1, 2, 3 or 4): " main_choice
     case $main_choice in
         1)
             log "Selected System Hardening"
@@ -44,11 +72,97 @@ main_menu() {
             log "Selected Apache Hardening"
             apache_hardening
             ;;
+        3)
+            log "Selected Specific Section"
+            specific_section_menu
+            ;;
+        4)
+            log "Exiting"
+            exit 0
+            ;;
         *)
             log "Invalid choice, exiting"
             exit 1
             ;;
     esac
+}
+
+# Function to display the specific section menu and get the user's choice
+specific_section_menu() {
+    while true; do
+        echo "Please choose a section to harden:"
+        echo "1. Update and Upgrade System Packages"
+        echo "2. Install Essential Security Packages"
+        echo "3. Configure Firewall"
+        echo "4. Secure SSH"
+        echo "5. Disable Unnecessary Services"
+        echo "6. Setup Fail2Ban"
+        echo "7. Setup Auditd"
+        echo "8. Setup Automatic Updates"
+        echo "9. Harden Kernel Parameters"
+        echo "10. Secure Apache Configuration"
+        echo "11. Disable Unnecessary Apache Modules"
+        echo "12. Setup Apache Log Rotation"
+        echo "13. Exit"
+        read -p "Enter your choice (1-13): " section_choice
+        case $section_choice in
+            1)
+                log "Selected Update and Upgrade System Packages"
+                update_and_upgrade
+                ;;
+            2)
+                log "Selected Install Essential Security Packages"
+                install_security_packages
+                ;;
+            3)
+                log "Selected Configure Firewall"
+                configure_firewall
+                ;;
+            4)
+                log "Selected Secure SSH"
+                secure_ssh
+                ;;
+            5)
+                log "Selected Disable Unnecessary Services"
+                disable_unnecessary_services
+                ;;
+            6)
+                log "Selected Setup Fail2Ban"
+                setup_fail2ban
+                ;;
+            7)
+                log "Selected Setup Auditd"
+                setup_auditd
+                ;;
+            8)
+                log "Selected Setup Automatic Updates"
+                setup_unattended_upgrades
+                ;;
+            9)
+                log "Selected Harden Kernel Parameters"
+                harden_kernel_parameters
+                ;;
+            10)
+                log "Selected Secure Apache Configuration"
+                secure_apache_config
+                ;;
+            11)
+                log "Selected Disable Unnecessary Apache Modules"
+                disable_unnecessary_apache_modules
+                ;;
+            12)
+                log "Selected Setup Apache Log Rotation"
+                setup_apache_log_rotation
+                ;;
+            13)
+                log "Exiting Specific Section Menu"
+                break
+                ;;
+            *)
+                log "Invalid choice, please try again"
+                ;;
+        esac
+    done
 }
 
 # Function for system hardening
@@ -126,12 +240,39 @@ configure_firewall() {
     fi
 }
 
+# Function to add user to sudo or wheel group
+add_user_to_sudo() {
+    if [ -z "$USERNAME" ]; then
+        read -p "Enter the username you want to add to the sudo/wheel group: " USERNAME
+    fi
+    if id "$USERNAME" &>/dev/null; then
+        case $OS in
+            ubuntu|debian)
+                usermod -aG sudo "$USERNAME"
+                log "Added $USERNAME to sudo group."
+                ;;
+            rhel|rocky)
+                usermod -aG wheel "$USERNAME"
+                log "Added $USERNAME to wheel group."
+                ;;
+            *)
+                log "Unsupported OS. Exiting."
+                exit 1
+                ;;
+        esac
+    else
+        log "User $USERNAME does not exist. Exiting."
+        exit 1
+    fi
+}
+
 # Function to secure SSH
 secure_ssh() {
     if ask_user "Disabling root login and securing SSH"; then
+        add_user_to_sudo
         sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
         sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
-        systemctl restart sshd | tee -a $LOGFILE
+        systemctl restart $SSH_SERVICE | tee -a $LOGFILE
     fi
 }
 
