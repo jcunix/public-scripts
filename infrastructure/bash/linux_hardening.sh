@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise..
+# The software is provided 'as is', without warranty of any kind, express or implied
+# This was developed by Jonathan Wilson, 14-JUN-2024
+
 LOGFILE="/var/tmp/harden.txt"
 USERNAME=""
 ALL_OPTIONS=false
@@ -209,6 +213,7 @@ install_security_packages() {
                 apt-get install -y ufw fail2ban auditd | tee -a $LOGFILE
                 ;;
             rhel|rocky)
+                yum install -y epel-release | tee -a $LOGFILE
                 yum install -y firewalld fail2ban audit dnf-automatic | tee -a $LOGFILE
                 ;;
             *)
@@ -232,7 +237,7 @@ configure_firewall() {
             rhel|rocky)
                 systemctl start firewalld | tee -a $LOGFILE
                 systemctl enable firewalld | tee -a $LOGFILE
-                firewall-cmd --permanent --set-default-zone=drop | tee -a $LOGFILE
+                firewall-cmd --permanent --zone=drop --set-target=DROP | tee -a $LOGFILE
                 firewall-cmd --permanent --zone=drop --add-service=ssh | tee -a $LOGFILE
                 firewall-cmd --reload | tee -a $LOGFILE
                 ;;
@@ -305,16 +310,60 @@ disable_unnecessary_services() {
 # Function to set up Fail2Ban
 setup_fail2ban() {
     if $ALL_OPTIONS || ask_user "Setting up fail2ban"; then
+        case $OS in
+            ubuntu|debian)
+                apt-get install -y fail2ban | tee -a $LOGFILE
+                ;;
+            rhel|rocky)
+                yum install -y fail2ban | tee -a $LOGFILE
+                ;;
+            *)
+                log "Unsupported OS. Exiting."
+                exit 1
+                ;;
+        esac
+
+        # Ensure the Fail2Ban service file exists
+        FAIL2BAN_SERVER=$(which fail2ban-server)
+        if [ ! -f "$FAIL2BAN_SERVER" ]; then
+            log "Fail2Ban server executable not found. Exiting."
+            exit 1
+        fi
+
+        # Create necessary directories and set correct permissions
+        mkdir -p /etc/fail2ban
+        mkdir -p /var/run/fail2ban
+        chown -R root:root /var/run/fail2ban
+        chmod -R 755 /var/run/fail2ban
+
         cat <<EOF > /etc/fail2ban/jail.local
+[DEFAULT]
+bantime  = 3600
+findtime  = 600
+maxretry = 3
+
+destemail = root@localhost
+sendername = Fail2Ban
+mta = sendmail
+
 [sshd]
 enabled = true
-port = ssh
-filter = sshd
+port    = ssh
+filter  = sshd
 logpath = /var/log/auth.log
 maxretry = 3
 EOF
+
         systemctl enable fail2ban | tee -a $LOGFILE
         systemctl start fail2ban | tee -a $LOGFILE
+
+        # Verify Fail2Ban status
+        if systemctl is-active --quiet fail2ban; then
+            log "Fail2Ban started successfully."
+        else
+            log "Fail2Ban failed to start."
+            systemctl status fail2ban | tee -a $LOGFILE
+        fi
     fi
 }
 
