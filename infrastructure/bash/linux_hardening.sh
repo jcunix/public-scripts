@@ -3,6 +3,11 @@
 # In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise..
 # The software is provided 'as is', without warranty of any kind, express or implied
 # This was developed by Jonathan Wilson, 14-JUN-2024
+#
+# Flags : -u username -a 
+# -u for username ( does not create account, will need to be existing, but script will add to sudo / wheel group if executed with -a or requested )
+# -a will flag the script to execute operating system hardening with all options bypassed and set to execute
+#
 
 LOGFILE="/var/tmp/harden.txt"
 USERNAME=""
