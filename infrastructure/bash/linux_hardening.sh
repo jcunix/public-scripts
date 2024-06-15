@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise..
+# In no event shall the author or copyright holder be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise..
 # The software is provided 'as is', without warranty of any kind, express or implied
 # This was developed by Jonathan Wilson, 14-JUN-2024
 #
