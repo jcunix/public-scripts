@@ -7,6 +7,7 @@
 # Flags : -u username -a 
 # -u for username ( does not create account, will need to be existing, but script will add to sudo / wheel group if executed with -a or requested )
 # -a will flag the script to execute operating system hardening with all options bypassed and set to execute
+# Both flags are optional
 #
 
 LOGFILE="/var/tmp/harden.txt"
