@@ -1,3 +1,9 @@
+# Configurable variables.  Script name is the map drive script provided.  This will look for the file in the my documents folder. 
+# this will allow you to use onedrive to keep the file backed up.
+$scriptName = "MapNetworkDrive.ps1"
+$documentsPath = [Environment]::GetFolderPath("MyDocuments")
+$scriptPath = [System.IO.Path]::Combine($documentsPath, $scriptName)
+
 # Function to determine if the OS is Windows 10 or Windows 11
 function Get-OSVersion {
     $osVersion = (Get-CimInstance -ClassName Win32_OperatingSystem).Version
@@ -33,11 +39,6 @@ function Copy-ScriptToStartup {
 }
 
 # Main script execution
-$documentsPath = [Environment]::GetFolderPath("MyDocuments")
-# Declare your file name here of the powershell script for mapping the drive
-$scriptName = "MapNetworkDrive.ps1"
-$scriptPath = [System.IO.Path]::Combine($documentsPath, $scriptName)
-
 if (Test-Path $scriptPath) {
     Copy-ScriptToStartup -scriptPath $scriptPath
 } else {
