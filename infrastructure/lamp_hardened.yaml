@@ -1,0 +1,246 @@
+---
+# Ansible Playbook for CISA-Compliant Hardened LAMP Stack with Nginx Proxy Manager in Docker
+# This playbook sets up a LAMP stack (Linux, Apache, MySQL, PHP) and Nginx Proxy Manager 
+# as a reverse proxy using Docker containers. The setup includes CISA-recommended security hardening measures.
+# Ansible Infrastructure Playbook - JW 7.17.24
+
+- name: CISA-Compliant Hardened LAMP Stack with Nginx Proxy Manager
+  hosts: lamp_servers
+  become: yes
+  vars:
+    mysql_root_password: "your_secure_mysql_root_password"  # Secure MySQL root password
+    mysql_user: "your_mysql_user"  # MySQL user
+    mysql_password: "your_secure_mysql_password"  # Secure MySQL user password
+    mysql_db: "your_database"  # MySQL database name
+    php_version: "7.4"  # PHP version to use
+    nginx_proxy_manager_version: "latest"  # Nginx Proxy Manager version
+    site_domain: "yourdomain.com"  # Domain for the site
+    allowed_ips: ["192.168.1.0/24"]  # Adjust this to your network
+  tasks:
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Install Docker Compose
+      apt:
+        name: docker-compose
+        state: present
+
+    - name: Create Docker network
+      docker_network:
+        name: lamp_network
+        state: present
+
+    - name: Create MySQL data directory
+      file:
+        path: /var/lib/mysql
+        state: directory
+        owner: 999  # MySQL user ID
+        group: 999  # MySQL group ID
+        mode: '0700'  # Directory permissions
+
+    - name: Create PHP data directory
+      file:
+        path: /var/www/html
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'  # Directory permissions
+
+    - name: Create Docker Compose file for LAMP stack
+      copy:
+        dest: /opt/lamp/docker-compose.yml
+        content: |
+          version: '3.7'
+          services:
+            db:
+              image: mysql:5.7
+              container_name: mysql
+              volumes:
+                - /var/lib/mysql:/var/lib/mysql
+              environment:
+                MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
+                MYSQL_DATABASE: "{{ mysql_db }}"
+                MYSQL_USER: "{{ mysql_user }}"
+                MYSQL_PASSWORD: "{{ mysql_password }}"
+              networks:
+                - lamp_network
+              restart: always
+              healthcheck:
+                test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+
+            php:
+              image: php:{{ php_version }}-apache
+              container_name: php
+              volumes:
+                - /var/www/html:/var/www/html
+              networks:
+                - lamp_network
+              depends_on:
+                db:
+                  condition: service_healthy
+              restart: always
+              environment:
+                MYSQL_USER: "{{ mysql_user }}"
+                MYSQL_PASSWORD: "{{ mysql_password }}"
+                MYSQL_DATABASE: "{{ mysql_db }}"
+              healthcheck:
+                test: ["CMD-SHELL", "curl --fail http://localhost || exit 1"]
+                interval: 1m30s
+                timeout: 10s
+                retries: 3
+
+          networks:
+            lamp_network:
+              external: true
+
+    - name: Create Docker Compose file for Nginx Proxy Manager
+      copy:
+        dest: /opt/nginx-proxy-manager/docker-compose.yml
+        content: |
+          version: '3'
+          services:
+            app:
+              image: 'jc21/nginx-proxy-manager:{{ nginx_proxy_manager_version }}'
+              restart: always
+              ports:
+                - '80:80'
+                - '81:81'
+                - '443:443'
+              environment:
+                DB_MYSQL_HOST: "db"
+                DB_MYSQL_PORT: 3306
+                DB_MYSQL_USER: "{{ mysql_user }}"
+                DB_MYSQL_PASSWORD: "{{ mysql_password }}"
+                DB_MYSQL_NAME: "{{ mysql_db }}"
+              volumes:
+                - ./data:/data
+                - ./letsencrypt:/etc/letsencrypt
+              networks:
+                - lamp_network
+              depends_on:
+                db:
+                  condition: service_healthy
+              healthcheck:
+                test: ["CMD-SHELL", "curl --fail http://localhost:81 || exit 1"]
+                interval: 1m30s
+                timeout: 10s
+                retries: 3
+
+            db:
+              image: 'jc21/mariadb-aria:latest'
+              restart: always
+              environment:
+                MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
+                MYSQL_DATABASE: '{{ mysql_db }}'
+                MYSQL_USER: '{{ mysql_user }}'
+                MYSQL_PASSWORD: '{{ mysql_password }}'
+              volumes:
+                - ./data/mysql:/var/lib/mysql
+              networks:
+                - lamp_network
+              healthcheck:
+                test: ["CMD", "mysqladmin ping -h localhost"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+
+          networks:
+            lamp_network:
+              external: true
+
+    - name: Ensure Docker Compose is up for LAMP stack
+      command: docker-compose up -d
+      args:
+        chdir: /opt/lamp
+
+    - name: Ensure Docker Compose is up for Nginx Proxy Manager
+      command: docker-compose up -d
+      args:
+        chdir: /opt/nginx-proxy-manager
+
+    - name: Configure firewall to allow web traffic
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+        comment: "Allow HTTP and HTTPS traffic"
+      loop:
+        - "80"
+        - "443"
+      state: enabled
+
+    - name: Harden MySQL configuration
+      shell: |
+        docker exec mysql mysql -u root -p{{ mysql_root_password }} -e "DELETE FROM mysql.user WHERE User='';"
+        docker exec mysql mysql -u root -p{{ mysql_root_password }} -e "DROP DATABASE IF EXISTS test;"
+        docker exec mysql mysql -u root -p{{ mysql_root_password }} -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+        docker exec mysql mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES;"
+
+    - name: Harden PHP configuration
+      lineinfile:
+        path: /etc/php/{{ php_version }}/apache2/php.ini
+        regexp: '^expose_php = On'
+        line: 'expose_php = Off'
+      notify: Restart PHP container
+
+    - name: Secure Apache configuration
+      lineinfile:
+        path: /etc/apache2/apache2.conf
+        regexp: '^ServerTokens OS'
+        line: 'ServerTokens Prod'
+      notify: Restart PHP container
+
+    - name: Restrict MySQL access to specific IPs
+      copy:
+        dest: /var/lib/mysql/conf.d/mysql.cnf
+        content: |
+          [mysqld]
+          bind-address = 127.0.0.1
+          skip-networking = 0
+      notify: Restart MySQL container
+
+    - name: Ensure Docker services are updated
+      shell: docker-compose pull
+      args:
+        chdir: /opt/lamp
+      register: lamp_update
+
+    - name: Restart LAMP stack services if updated
+      command: docker-compose up -d
+      args:
+        chdir: /opt/lamp
+      when: lamp_update.changed
+
+    - name: Ensure Docker services are updated for Nginx Proxy Manager
+      shell: docker-compose pull
+      args:
+        chdir: /opt/nginx-proxy-manager
+      register: nginx_update
+
+    - name: Restart Nginx Proxy Manager services if updated
+      command: docker-compose up -d
+      args:
+        chdir: /opt/nginx-proxy-manager
+      when: nginx_update.changed
+
+    - name: Enable UFW logging
+      ufw:
+        logging: 'on'
+        state: enabled
+
+  handlers:
+    - name: Restart PHP container
+      docker_container:
+        name: php
+        state: restarted
+
+    - name: Restart MySQL container
+      docker_container:
+        name: mysql
+        state: restarted
