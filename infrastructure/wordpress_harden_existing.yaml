@@ -1,0 +1,114 @@
+---
+# Ansible Playbook for Hardening an Existing WordPress Installation
+# This playbook secures an existing WordPress installation by setting appropriate file permissions,
+# securing the wp-config.php file, configuring a firewall, securing the database, and enabling fail2ban.
+# Ansible Infrastructure Playbook - JW 6.12.24
+
+- name: Harden Existing WordPress Installation
+  hosts: wordpress_servers
+  become: yes
+  vars:
+    wordpress_root: "/var/www/html/wordpress"  # Path to the WordPress installation
+    mysql_root_password: "your_secure_mysql_root_password"  # MySQL root password
+    mysql_wordpress_user: "wordpress_user"  # MySQL WordPress user
+    mysql_wordpress_password: "your_secure_wordpress_password"  # MySQL WordPress user password
+    mysql_wordpress_db: "wordpress_db"  # MySQL WordPress database
+  tasks:
+    - name: Set file permissions for WordPress
+      find:
+        paths: "{{ wordpress_root }}"
+        recurse: yes
+        file_type: file
+      register: wordpress_files
+
+    - name: Set directory permissions for WordPress
+      find:
+        paths: "{{ wordpress_root }}"
+        recurse: yes
+        file_type: directory
+      register: wordpress_directories
+
+    - name: Set proper file permissions
+      file:
+        path: "{{ item.path }}"
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      loop: "{{ wordpress_files.files }}"
+
+    - name: Set proper directory permissions
+      file:
+        path: "{{ item.path }}"
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      loop: "{{ wordpress_directories.files }}"
+
+    - name: Secure wp-config.php file
+      file:
+        path: "{{ wordpress_root }}/wp-config.php"
+        owner: www-data
+        group: www-data
+        mode: '0600'
+
+    - name: Ensure MySQL is secured
+      shell: |
+        mysql -u root -p{{ mysql_root_password }} -e "DELETE FROM mysql.user WHERE User='';"
+        mysql -u root -p{{ mysql_root_password }} -e "DROP DATABASE IF EXISTS test;"
+        mysql -u root -p{{ mysql_root_password }} -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+        mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES;"
+
+    - name: Restrict MySQL access to localhost
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 127.0.0.1'
+      notify: Restart MySQL
+
+    - name: Install fail2ban
+      apt:
+        name: fail2ban
+        state: present
+        update_cache: yes
+
+    - name: Configure fail2ban for WordPress
+      copy:
+        dest: /etc/fail2ban/jail.d/wordpress.conf
+        content: |
+          [wordpress]
+          enabled = true
+          filter = wordpress
+          action = iptables-multiport[name=WordPress, port="http,https"]
+          logpath = {{ wordpress_root }}/wp-content/debug.log
+          maxretry = 5
+      notify: Restart fail2ban
+
+    - name: Create fail2ban filter for WordPress
+      copy:
+        dest: /etc/fail2ban/filter.d/wordpress.conf
+        content: |
+          [Definition]
+          failregex = ^<HOST> .* "POST .*wp-login.php
+      notify: Restart fail2ban
+
+    - name: Configure UFW firewall
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+        comment: "Allow HTTP and HTTPS traffic"
+      loop:
+        - "80"
+        - "443"
+      state: enabled
+
+  handlers:
+    - name: Restart MySQL
+      service:
+        name: mysql
+        state: restarted
+
+    - name: Restart fail2ban
+      service:
+        name: fail2ban
+        state: restarted
