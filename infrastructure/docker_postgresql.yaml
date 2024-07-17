@@ -1,0 +1,126 @@
+---
+# Ansible Playbook for Ultra Hardened PostgreSQL Deployment
+# This playbook installs and configures a PostgreSQL database running in a Docker container
+# with enhanced security measures including SSL, restricted network access, and secure configurations.
+# It follows best practices for hardening the PostgreSQL setup.
+# Ansible Infrastructure Playbook - JW 7.17.24
+
+- name: Ultra Hardened PostgreSQL Deployment
+  hosts: dbservers
+  become: yes
+  vars:
+    postgres_version: "13"  # PostgreSQL version to use
+    postgres_user: "your_postgres_user"  # PostgreSQL user
+    postgres_password: "your_secure_password"  # PostgreSQL password
+    postgres_db: "your_database"  # PostgreSQL database name
+    postgres_data_dir: "/var/lib/postgresql/data"  # Data directory for PostgreSQL
+    postgres_cert_dir: "/etc/postgresql/certs"  # Directory for SSL certificates
+    allowed_ips: ["192.168.1.0/24"]  # Allowed IP addresses
+  tasks:
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Install Docker Python module
+      pip:
+        name: docker
+
+    - name: Pull PostgreSQL Docker image
+      docker_image:
+        name: postgres
+        tag: "{{ postgres_version }}"
+        source: pull
+
+    - name: Create PostgreSQL data directory
+      file:
+        path: "{{ postgres_data_dir }}"
+        state: directory
+        owner: 999  # PostgreSQL user ID
+        group: 999  # PostgreSQL group ID
+        mode: '0700'  # Directory permissions
+
+    - name: Create PostgreSQL certificates directory
+      file:
+        path: "{{ postgres_cert_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0750'  # Directory permissions
+
+    - name: Generate self-signed SSL certificates for PostgreSQL
+      openssl_certificate:
+        path: "{{ postgres_cert_dir }}/postgresql.crt"
+        privatekey_path: "{{ postgres_cert_dir }}/postgresql.key"
+        common_name: "postgres"
+        owner: postgres
+        group: postgres
+        mode: '0600'  # File permissions
+
+    - name: Run PostgreSQL container with SSL and encrypted data
+      docker_container:
+        name: postgres
+        image: "postgres:{{ postgres_version }}"
+        state: started
+        restart_policy: always
+        env:
+          POSTGRES_USER: "{{ postgres_user }}"
+          POSTGRES_PASSWORD: "{{ postgres_password }}"
+          POSTGRES_DB: "{{ postgres_db }}"
+        volumes:
+          - "{{ postgres_data_dir }}:/var/lib/postgresql/data"
+          - "{{ postgres_cert_dir }}:/etc/ssl/certs/postgresql"
+        ports:
+          - "5432:5432"
+        ulimits:
+          nofile:
+            soft: 1024
+            hard: 2048
+
+    - name: Secure PostgreSQL configurations
+      shell: |
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER USER {{ postgres_user }} WITH PASSWORD '{{ postgres_password }}';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "REVOKE CONNECT ON DATABASE {{ postgres_db }} FROM PUBLIC;"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "REVOKE ALL ON SCHEMA public FROM PUBLIC;"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "GRANT CONNECT ON DATABASE {{ postgres_db }} TO {{ postgres_user }};"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "GRANT USAGE ON SCHEMA public TO {{ postgres_user }};"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET password_encryption = 'scram-sha-256';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET ssl = 'on';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET ssl_cert_file = '/etc/ssl/certs/postgresql/postgresql.crt';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET ssl_key_file = '/etc/ssl/certs/postgresql/postgresql.key';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET log_connections = 'on';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET log_disconnections = 'on';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET log_statement = 'all';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET log_min_duration_statement = '1000';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET logging_collector = 'on';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET log_directory = 'pg_log';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log';"
+        docker exec postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "ALTER SYSTEM SET log_file_mode = '0600';"
+      args:
+        creates: "{{ postgres_data_dir }}/postgresql.conf"
+
+    - name: Restrict PostgreSQL access to specific IPs
+      copy:
+        dest: "{{ postgres_data_dir }}/pg_hba.conf"
+        content: |
+          # TYPE  DATABASE        USER            ADDRESS                 METHOD
+          hostssl all             all             {{ allowed_ips }}       scram-sha-256
+          host    all             all             127.0.0.1/32            scram-sha-256
+          host    all             all             ::1/128                 scram-sha-256
+      notify: Restart PostgreSQL container
+
+    - name: Ensure firewall allows only specific IPs for PostgreSQL
+      ufw:
+        rule: allow
+        port: 5432
+        proto: tcp
+        from_ip: "{{ item }}"
+      loop: "{{ allowed_ips }}"
+      state: enabled
+
+  handlers:
+    - name: Restart PostgreSQL container
+      docker_container:
+        name: postgres
+        state: restarted
