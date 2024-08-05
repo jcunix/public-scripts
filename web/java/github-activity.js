@@ -36,7 +36,7 @@
     `;
     document.head.appendChild(style);
 
-    axios.get(`https://api.github.com/users/${username}/events`)
+    axios.get(`https://api.github.com/users/${username}/events/public`)
         .then(response => {
             const events = response.data;
             const contributions = {};
