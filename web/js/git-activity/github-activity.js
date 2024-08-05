@@ -8,6 +8,8 @@
  * Developed by Jonathan Wilson, https://www.jonathancw.com/
  * Github Repository is https://github.com/jcunix/public-scripts
  *
+ * Version 1.5
+ *
  * Configuration:
  * - data-username: (required) The GitHub username to display activity for.
  * - data-show-heading: (optional) Set to `true` to show the heading, `false` to hide it. Default is `true`.
