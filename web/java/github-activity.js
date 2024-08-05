@@ -1,7 +1,52 @@
+/**
+ * GitHub Activity Display Script
+ *
+ * This script allows you to display a GitHub user's activity on your website,
+ * including total contributions, longest streak, and current streak over the past year.
+ * It also includes a configurable heading and link to the user's GitHub profile.
+ *
+ * Developed by Jonathan Wilson, https://www.jonathancw.com/
+ * Github Repository is https://github.com/jcunix/public-scripts
+ *
+ * Configuration:
+ * - data-username: (required) The GitHub username to display activity for.
+ * - data-show-heading: (optional) Set to `true` to show the heading, `false` to hide it. Default is `true`.
+ * - data-background-color: (optional) The background color of the display. Default is `#fff`.
+ * - data-text-color: (optional) The text color. Default is `#000`.
+ * - data-heading-color: (optional) The color of the heading text. Default is `#000`.
+ * - data-link-color: (optional) The color of the link to the GitHub profile. Default is `#000`.
+ * - data-align: (optional) The alignment of the display. Options are `left` or `center`. Default is `left`.
+ * - data-display-name: (optional) A custom display name to show in the heading. If not provided, the username will be used.
+ *
+ * Example Usage:
+ * <script src="https://cdn.jsdelivr.net/gh/jcunix/public-scripts@master/web/java/github-activity.js"
+ *         data-username="your-github-username"
+ *         data-show-heading="true"
+ *         data-background-color="#f0f0f0"
+ *         data-text-color="#333"
+ *         data-heading-color="#ff0000"
+ *         data-link-color="#0066cc"
+ *         data-align="center"
+ *         data-display-name="John Doe"></script>
+ *
+ * Dependencies:
+ * - Axios (https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js)
+ *
+ * License:
+ * This project is licensed under the GNU AGPLv3
+ */
+
 (function() {
     document.addEventListener('DOMContentLoaded', function() {
         const script = document.querySelector('script[data-username]');
         const username = script ? script.getAttribute('data-username') : null;
+        const showHeading = script ? script.getAttribute('data-show-heading') !== 'false' : true;
+        const backgroundColor = script ? script.getAttribute('data-background-color') || '#fff' : '#fff';
+        const textColor = script ? script.getAttribute('data-text-color') || '#000' : '#000';
+        const headingColor = script ? script.getAttribute('data-heading-color') || '#000' : '#000';
+        const linkColor = script ? script.getAttribute('data-link-color') || '#000' : '#000';
+        const align = script ? script.getAttribute('data-align') || 'left' : 'left';
+        const displayName = script ? script.getAttribute('data-display-name') || username : username;
 
         if (!username) {
             console.error('GitHub username is required');
@@ -10,8 +55,10 @@
 
         const container = document.createElement('div');
         container.innerHTML = `
-        <h1>GitHub Activity</h1>
-        <div id="calendar-container">
+        ${showHeading ? `<h1 class="heading">${displayName} GitHub Activity</h1>` : ''}
+        <table id="calendar-table" style="background-color: ${backgroundColor}; color: ${textColor}; margin: ${align === 'center' ? '20px auto' : '20px 0'};">
+        <tr>
+        <td id="calendar-container">
         <div id="day-labels">
         <div>Mon</div>
         <div>Wed</div>
@@ -21,30 +68,48 @@
         <div id="month-labels"></div>
         <div id="calendar"></div>
         </div>
-        </div>
-        <div id="stats-container">
+        </td>
+        </tr>
+        <tr>
+        <td id="stats-container">
         <div class="stat-box">
-        <p>Total Contributions</p>
-        <span id="total-contributions"></span>
+        <p><strong>Total Contributions</strong></p>
+        <span id="total-contributions"></span> Total
+        <small id="total-date-range"></small>
         </div>
         <div class="stat-box">
-        <p>Longest Streak</p>
-        <span id="longest-streak"></span>
+        <p><strong>Longest Streak</strong></p>
+        <span id="longest-streak"></span> Total
         </div>
         <div class="stat-box">
-        <p>Current Streak</p>
-        <span id="current-streak"></span>
+        <p><strong>Current Streak</strong></p>
+        <span id="current-streak"></span> Total
         </div>
-        </div>
+        </td>
+        </tr>
+        </table>
+        <a id="github-link" href="https://github.com/${username}" target="_blank" style="display: block; text-align: ${align}; margin-top: 10px; color: ${linkColor};">View GitHub Profile</a>
         `;
         document.body.appendChild(container);
 
         const style = document.createElement('style');
         style.textContent = `
+        .heading {
+            text-align: ${align};
+            color: ${headingColor};
+        }
+        #calendar-table {
+        border: 1px solid #ddd;
+        border-collapse: collapse;
+        width: 100%;
+        max-width: 750px;
+        background-color: ${backgroundColor};
+        color: ${textColor};
+        }
         #calendar-container {
         display: flex;
         align-items: flex-start;
-        margin-top: 20px;
+        padding: 20px;
         }
         #calendar-wrapper {
         display: flex;
@@ -54,21 +119,21 @@
         display: flex;
         justify-content: space-between;
         margin-bottom: 5px;
-        padding-left: 30px; /* Add padding to align with the calendar */
+        padding-left: 30px;
+        font-weight: bold;
         }
         #calendar {
-        display: flex;
-        flex-wrap: wrap;
-        width: 728px; /* Adjusted width for better visibility */
+        display: grid;
+        grid-template-columns: repeat(53, 16px); /* Ensure it spans across 53 weeks */
+        grid-gap: 2px;
+        width: fit-content;
         }
         .week {
-            display: flex;
-            flex-direction: row;
+            display: contents;
         }
         .day {
-            width: 10px;
-            height: 10px;
-            margin: 1px;
+            width: 14px;
+            height: 14px;
             background-color: #ebedf0;
         }
         .day.contributed-1 {
@@ -87,25 +152,38 @@
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        height: 100px; /* Adjust height to match the calendar */
+        height: 112px; /* Adjust height to match the calendar */
         margin-right: 5px;
-        margin-top: 18px; /* Align with the start of the weeks */
+        margin-top: 18px;
         padding-right: 10px;
+        }
+        #day-labels div {
+        height: 14px;
+        line-height: 14px;
+        font-weight: bold;
         }
         #stats-container {
         display: flex;
-        justify-content: center;
-        margin-top: 20px;
-        width: 728px; /* Match the width of the calendar */
+        justify-content: space-evenly;
+        padding: 10px 20px; /* Reduce padding */
         }
         .stat-box {
             border: 1px solid #ddd;
-            padding: 10px;
+            padding: 5px; /* Reduce padding */
             border-radius: 5px;
             width: 150px;
             text-align: center;
             margin: 0 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .stat-box p {
+            margin: 5px 0; /* Reduce margin */
+        }
+        .stat-box small {
+            display: block;
+            margin-top: 5px;
+            font-size: 0.8em;
+            color: ${textColor}; /* Use the same text color */
         }
         `;
         document.head.appendChild(style);
@@ -133,40 +211,41 @@
             const today = new Date();
             const startDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
 
-            let weekDiv = document.createElement('div');
-            weekDiv.className = 'week';
-            calendar.appendChild(weekDiv);
-
             let currentMonth = startDate.getMonth();
             let monthLabel = document.createElement('div');
             monthLabel.textContent = startDate.toLocaleString('default', { month: 'short' });
+            monthLabel.style.gridColumnStart = 1;
             monthLabels.appendChild(monthLabel);
 
+            let weekCount = 0;
+            let dayCount = 0;
+
             for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
-                const dateStr = d.toISOString().split('T')[0];
-                const dayDiv = document.createElement('div');
-                dayDiv.className = 'day';
+                if (dayCount >= 7 * 53) break; // Limit to 7 rows and 53 columns (one year)
 
-                const count = contributions[dateStr] || 0;
-                if (count > 0) {
-                    dayDiv.classList.add(`contributed-${Math.min(count, 4)}`);
-                }
+    if (d.getDay() === 0 && d !== startDate) {
+        weekCount++;
+    }
 
-                if (d.getDay() === 0 && d !== startDate) {
-                    weekDiv = document.createElement('div');
-                    weekDiv.className = 'week';
-                    calendar.appendChild(weekDiv);
-                }
+    const dateStr = d.toISOString().split('T')[0];
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'day';
 
-                weekDiv.appendChild(dayDiv);
+    const count = contributions[dateStr] || 0;
+    if (count > 0) {
+        dayDiv.classList.add(`contributed-${Math.min(count, 4)}`);
+    }
 
-                if (d.getMonth() !== currentMonth) {
-                    currentMonth = d.getMonth();
-                    monthLabel = document.createElement('div');
-                    monthLabel.textContent = d.toLocaleString('default', { month: 'short' });
-                    monthLabel.style.flex = '1';
-                    monthLabels.appendChild(monthLabel);
-                }
+    calendar.appendChild(dayDiv);
+    dayCount++;
+
+    if (d.getMonth() !== currentMonth) {
+        currentMonth = d.getMonth();
+        monthLabel = document.createElement('div');
+        monthLabel.textContent = d.toLocaleString('default', { month: 'short' });
+        monthLabel.style.gridColumnStart = weekCount + 1;
+        monthLabels.appendChild(monthLabel);
+    }
             }
         }
 
@@ -194,6 +273,13 @@
             longestStreak = Math.max(maxStreak, currentStreak);
             document.getElementById('longest-streak').textContent = longestStreak;
             document.getElementById('current-streak').textContent = currentStreak;
+
+            const startDate = new Date(dates[0]);
+            const endDate = new Date(dates[dates.length - 1]);
+            const startMonthYear = startDate.toLocaleString('default', { month: 'short', year: 'numeric' });
+            const endMonthYear = endDate.toLocaleString('default', { month: 'short', year: 'numeric' });
+
+            document.getElementById('total-date-range').textContent = `${startMonthYear} - ${endMonthYear}`;
         }
     });
 })();
