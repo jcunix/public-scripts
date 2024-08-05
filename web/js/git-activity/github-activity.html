@@ -15,7 +15,43 @@
         .github-activity-heading {
             color: #000;
         }
-        /* Include other styles here */
+        #github-calendar {
+            display: grid;
+            grid-template-columns: repeat(53, 16px); /* Ensure it spans across 53 weeks */
+            grid-gap: 2px;
+            width: fit-content;
+        }
+        .day {
+            width: 14px;
+            height: 14px;
+            background-color: #ebedf0;
+        }
+        .day.contributed-1 {
+            background-color: #c6e48b;
+        }
+        .day.contributed-2 {
+            background-color: #7bc96f;
+        }
+        .day.contributed-3 {
+            background-color: #239a3b;
+        }
+        .day.contributed-4 {
+            background-color: #196127;
+        }
+        #github-stats-container {
+            display: flex;
+            justify-content: space-evenly;
+            padding: 10px 20px; /* Reduce padding */
+        }
+        .github-stat-box {
+            border: 1px solid #ddd;
+            padding: 5px; /* Reduce padding */
+            border-radius: 5px;
+            width: 150px;
+            text-align: center;
+            margin: 0 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
@@ -23,7 +59,36 @@
     <div class="github-activity-container">
         <h1 class="github-activity-heading">GitHub Activity</h1>
         <table id="github-calendar-table">
-            <!-- Calendar and stats HTML -->
+            <tr>
+                <td id="github-calendar-container">
+                    <div id="github-day-labels">
+                        <div>Mon</div>
+                        <div>Wed</div>
+                        <div>Fri</div>
+                    </div>
+                    <div id="github-calendar-wrapper">
+                        <div id="github-month-labels"></div>
+                        <div id="github-calendar"></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td id="github-stats-container">
+                    <div class="github-stat-box">
+                        <p><strong>Total Contributions</strong></p>
+                        <span id="github-total-contributions"></span> Total
+                        <small id="github-total-date-range"></small>
+                    </div>
+                    <div class="github-stat-box">
+                        <p><strong>Longest Streak</strong></p>
+                        <span id="github-longest-streak"></span> Total
+                    </div>
+                    <div class="github-stat-box">
+                        <p><strong>Current Streak</strong></p>
+                        <span id="github-current-streak"></span> Total
+                    </div>
+                </td>
+            </tr>
         </table>
         <a id="github-link" href="#" target="_blank">View GitHub Profile</a>
     </div>
