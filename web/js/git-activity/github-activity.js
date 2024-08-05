@@ -19,7 +19,7 @@
  * - data-display-name: (optional) A custom display name to show in the heading. If not provided, the username will be used.
  *
  * Example Usage:
- * <script src="https://cdn.jsdelivr.net/gh/jcunix/public-scripts@master/web/java/github-activity.js"
+ * <script src="https://cdn.jsdelivr.net/gh/jcunix/public-scripts@latest/web/js/git-activity/github-activity.js"
  *         data-username="your-github-username"
  *         data-show-heading="true"
  *         data-background-color="#f0f0f0"
