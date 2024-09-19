@@ -1,0 +1,56 @@
+captainVersion: 4
+
+services:
+  server:
+    image: ghcr.io/goauthentik/server:2024.8.2  # Specify your desired Authentik image and tag
+    restart: unless-stopped
+    command: server
+    environment:
+      # External PostgreSQL Configuration
+      AUTHENTIK_POSTGRESQL__HOST: your.postgresql.server.address  # Replace with your PostgreSQL server address
+      AUTHENTIK_POSTGRESQL__PORT: 5432                            # Default PostgreSQL port; change if different
+      AUTHENTIK_POSTGRESQL__USER: authentik                       # Database username
+      AUTHENTIK_POSTGRESQL__NAME: authentik                       # Database name
+      AUTHENTIK_POSTGRESQL__PASSWORD: your_secure_password        # Database password
+      
+      # External Redis Configuration
+      AUTHENTIK_REDIS__HOST: your.redis.server.address            # Replace with your Redis server address
+      AUTHENTIK_REDIS__PORT: 6379                                 # Default Redis port; change if different
+      
+    volumes:
+      - ${CAPROVER_VOL_LOCATION}/media:/media
+      - ${CAPROVER_VOL_LOCATION}/custom-templates:/templates
+    ports:
+      - "9000:9000"  # HTTP port for the Authentik server
+      - "9443:9443"  # HTTPS port for the Authentik server
+    networks:
+      - captain-overlay-network
+
+  worker:
+    image: ghcr.io/goauthentik/server:2024.8.2  # Specify your desired Authentik image and tag
+    restart: unless-stopped
+    command: worker
+    environment:
+      # External PostgreSQL Configuration
+      AUTHENTIK_POSTGRESQL__HOST: your.postgresql.server.address  # Replace with your PostgreSQL server address
+      AUTHENTIK_POSTGRESQL__PORT: 5432                            # Default PostgreSQL port; change if different
+      AUTHENTIK_POSTGRESQL__USER: authentik                       # Database username
+      AUTHENTIK_POSTGRESQL__NAME: authentik                       # Database name
+      AUTHENTIK_POSTGRESQL__PASSWORD: your_secure_password        # Database password
+      
+      # External Redis Configuration
+      AUTHENTIK_REDIS__HOST: your.redis.server.address            # Replace with your Redis server address
+      AUTHENTIK_REDIS__PORT: 6379                                 # Default Redis port; change if different
+      
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CAPROVER_VOL_LOCATION}/media:/media
+      - ${CAPROVER_VOL_LOCATION}/certs:/certs
+      - ${CAPROVER_VOL_LOCATION}/custom-templates:/templates
+    networks:
+      - captain-overlay-network
+
+networks:
+  captain-overlay-network:
+    external: true
